@@ -57,16 +57,44 @@ Body = [
             page.sendtobash(String.fromCharCode(charCode))});"),            
          Body.
 
+
+interpreter([],_EscFlag)->
+"";
+interpreter([Char|RestOfBuffer],EscFlag)->
+case EscFlag of
+0-> case Char of
+                   8 ->  do_bs(".wfid_shell");        %Back space character
+                   27->  interpreter(RestOfBuffer,1); %Esc goto mode 1                           
+                    _->  wf:insert_bottom(shell, Char) %Common Char just print
+     end;
+1-> case Char of
+    $[->interpreter(RestOfBuffer,2); %Esc goto mode 2 
+     _-> wf:insert_bottom(shell, Char) %Unknown Command Just Print 
+     end;
+
+2-> case Char of
+    $K-> wf:flash("Do Clear line");
+     _->wf:insert_bottom(shell, Char) %Unknown Command Just Print 
+    end;
+_-> wf:error("Unknown Esc mode!")
+end
+,interpreter(RestOfBuffer,0).  
+
+interpreter(Buffer)->
+interpreter(Buffer,0).
+
+
 %%
 do_bs(TextArreaID)->
+wf:flash("bs"),
 wf:wire("
 var TextArea = $('"++TextArreaID++"')[0];
 var x = TextArea.selectionStart; 
 TextArea.value = TextArea.value.substr(0, TextArea.selectionStart - 1) + TextArea.value.substr(TextArea.selectionEnd, TextArea.value.length);
 TextArea.selectionStart = x - 1;   
 TextArea.selectionEnd = x - 1;
-").
-
+"),
+wf:flush().
 
 %%%%
 api_event(sendtobash, _, Char) ->
@@ -74,7 +102,8 @@ api_event(sendtobash, _, Char) ->
 
 writetoshell(Buffer)->
 %  wf:flash(Buffer),  
-   wf:insert_bottom(shell,Buffer),%Here have to go to esc codes interpreter
+%%   wf:insert_bottom(shell,Buffer),%Here have to go to esc codes interpreter
+interpreter(Buffer),
   wf:wire("obj('shell').scrollTop = obj('shell').scrollHeight;"),
 wf:flush().
 
